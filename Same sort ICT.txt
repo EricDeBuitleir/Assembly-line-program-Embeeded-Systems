@@ -1,0 +1,205 @@
+Sample Sort ICT Project
+
+
+/*
+
+ * ictSortArea.c
+
+ *
+
+ *  Created on: 11 Nov 2021
+
+ *      Author: Eric Butler
+
+ */
+
+#include "xmc_common.h"
+
+
+
+#include <xmc_gpio.h>
+
+
+
+/* Inputs */
+
+#define SortAreaSensor P0_5
+
+#define SortAreaMetalDetected P0_8
+
+
+
+/* Outputs */
+
+#define SortSol P2_0
+
+
+
+unsigned int counter = 0;
+
+unsigned int counterAsm =0;
+
+unsigned int SortSolActivated = 0;
+
+
+
+int timer[4];
+
+
+
+void TenthSecTick(void)
+
+{
+
+
+
+		if(timer[2] == 1)  //if timer is activated
+
+		{
+
+			timer[0]++;    //increment timer current value
+
+			if(timer[0] >= timer[1]) //if current value >= preset
+
+			{
+
+				timer[3] = 1;  //Signal Timer has timed-out
+
+			}
+
+			else{
+
+				timer[3] = 0;   //Otherwise, signal Timer has not timed-out
+
+			}
+
+		}
+
+
+
+}
+
+
+
+
+
+void SysTick_Handler(void)
+
+{
+
+	TenthSecTick();
+
+	  XMC_GPIO_SetOutputHigh(LED2); //Testing
+
+}
+
+
+
+
+
+void initPortPins()
+
+{
+
+	XMC_GPIO_SetMode(SortAreaSensor, XMC_GPIO_MODE_INPUT_PULL_DOWN );
+
+	XMC_GPIO_SetMode(SortAreaMetalDetected, XMC_GPIO_MODE_INPUT_PULL_DOWN );
+
+
+
+	XMC_GPIO_SetMode(SortSol, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
+
+}
+
+
+
+void setUpTimers(void)
+
+{
+
+	/* Sort Timers */
+
+	timer[0] = 0;  	//timerCurrent
+
+	timer[1] = 10;   //timerPreset
+
+	timer[2] = 0;	//timerEnable
+
+	timer[3] = 0;	//timerOutput
+
+}
+
+
+
+
+
+/* Main */
+
+int main(void)
+
+{
+
+	initPortPins();
+
+	setUpTimers();
+
+
+
+  /* System timer configuration */
+
+  SysTick_Config(SystemCoreClock /10);
+
+
+
+  while(1)
+
+  {
+
+
+
+	  /* Sort Area */
+
+
+
+	//if the sort solenoid is not active, the sort area sensor is equal to 1 and the sort area metal sensor is equal to 0,
+
+	  //then activate the sort solenoid and increment the counter.
+
+
+
+if(!SortSolActivated && XMC_GPIO_GetInput(SortAreaSensor) == 1  && XMC_GPIO_GetInput(SortAreaMetalDetected) == 0)
+
+	 {
+
+	 SortSolActivated = 1;
+
+	 timer[2] = 1;
+
+	 XMC_GPIO_SetOutputHigh(SortSol);
+
+	 counterAsm++;
+
+	 }
+
+// else if the sort solenoid is active and the timer output is equal to 1,
+
+//then deactivate the sort solenoid.
+
+else if(SortSolActivated && timer[3] == 1)
+
+	 {
+
+	 SortSolActivated = 0;
+
+	 timer[2] = 0;
+
+	 timer[0] = 0; //reset current value
+
+	 XMC_GPIO_SetOutputLow(SortSol);
+
+	 }
+
+}
+
+}
+
